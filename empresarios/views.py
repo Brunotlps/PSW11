@@ -1,5 +1,5 @@
 from django.shortcuts import redirect, render
-from .models import Empresas, Documento
+from .models import Empresas, Documento, Metricas
 from django.contrib import messages
 from django.contrib.messages import constants   
 
@@ -75,10 +75,15 @@ def empresa(request,id):
     
     if empresa.user != request.user:
         messages.add_message(request, constants.ERROR, 'Erro de validação')
-        return redirect(f'empresarios/empresa/{id}')
+        return redirect(f'empresarios/listar_empresas')
     
     if request.method == "GET":
-        return render(request, 'empresa.html', {'empresa':empresa})
+        documentos = Documento.objects.filter(empresa=empresa)
+        return render(request, 'empresa.html', 
+                      {
+                          'empresa':empresa, 
+                          'documentos': documentos
+                      })
     
 def add_doc(request, id):
     empresa = Empresas.objects.get(id=id)
@@ -88,15 +93,15 @@ def add_doc(request, id):
 
     if empresa.user != request.user:
         messages.add_message(request, constants.ERROR, 'Erro de validação')
-        return redirect(f'empresarios/empresa/{id}')
+        return redirect(f'/empresarios/listar_empresas')
 
     if extensao[1] != 'pdf':
         messages.add_message(request, constants.ERROR, 'Envie um arquivo pdf')
-        return redirect(f'empresarios/empresa/{id}')
+        return redirect(f'/empresarios/empresa/{id}')
     
     if not arquivo:
         messages.add_message(request, constants.ERROR, 'Envie um arquivo pdf')
-        return redirect(f'empresarios/listar_empresas')
+        return redirect(f'/empresarios/empresa/{id}')
     
 
 
@@ -108,4 +113,31 @@ def add_doc(request, id):
     documento.save()
 
     messages.add_message(request, constants.SUCCESS, 'Arquivo cadastrado com sucesso')
-    return redirect(f'empresarios/empresa/{id}')
+    return redirect(f'/empresarios/empresa/{id}')
+
+def excluir_dc(request, id):
+    documento = Documento.objects.get(id=id)
+    
+    if documento.empresa.user != request.user:
+        messages.add_message(request, constants.ERROR, 'Erro de validação')
+        return redirect(f'/empresarios/listar_empresas')
+    
+    
+    documento.delete()
+    messages.add_message(request, constants.SUCCESS, 'Documento excluído com sucesso')
+    return redirect(f'/empresarios/empresa/{documento.empresa.id}')
+
+def add_metrica(request, id):
+    empresa = Empresas.objects.get(id=id)
+    titulo = request.POST.get('titulo')
+    valor = request.POST.get('valor')
+    
+    metrica = Metricas(
+        empresa=empresa,
+        titulo=titulo,
+        valor=valor
+    )
+    metrica.save()
+
+    messages.add_message(request, constants.SUCCESS, "Métrica cadastrada com sucesso")
+    return redirect(f'/empresarios/empresa/{empresa.id}')
